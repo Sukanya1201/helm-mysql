@@ -15,17 +15,17 @@ public class CommentController {
     private CommentService service;
 
     @PostMapping
-    public Comment addOrder(@RequestBody Comment comment){
+    public Comment addComments(@RequestBody Comment comment){
         return service.addComment(comment);
     }
 
     @GetMapping
-    public List<Comment> getOrders(){
+    public List<Comment> getComments(){
         return service.getComments();
     }
 
     @GetMapping("/{id}")
-    public Comment getOrderById(@PathVariable int id){
+    public Comment getCommentsById(@PathVariable int id){
         return service.getCommentById(id);
     }
 }
