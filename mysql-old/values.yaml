@@ -25,13 +25,13 @@ mysqlRootPassword: testing
 
 ## Create a database user
 ##
-mysqlUser: root
+# mysqlUser:
 ## Default: random 10 character string
 # mysqlPassword:
 
 ## Allow unauthenticated access, uncomment to enable
 ##
-#mysqlAllowEmptyPassword: true
+# mysqlAllowEmptyPassword: true
 
 ## Create a database
 ##

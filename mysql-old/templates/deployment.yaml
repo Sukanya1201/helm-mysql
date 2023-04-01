@@ -54,7 +54,10 @@ spec:
         image: "{{ .Values.busybox.image}}:{{ .Values.busybox.tag }}"
         imagePullPolicy: {{ .Values.imagePullPolicy | quote }}
         resources:
-{{ toYaml .Values.initContainer.resources | indent 10 }}
+          requests:
+            memory: 10Mi
+            cpu: 10m
+
         command:  ["rm", "-fr", "/var/lib/mysql/lost+found"]
         volumeMounts:
         - name: data
@@ -91,44 +94,86 @@ spec:
         resources:
 {{ toYaml .Values.resources | indent 10 }}
         env:
-        {{- if .Values.mysqlAllowEmptyPassword }}
-        - name: MYSQL_ALLOW_EMPTY_PASSWORD
-          value: "true"
-        {{- end }}
-        {{- if not (and .Values.allowEmptyRootPassword (not .Values.mysqlRootPassword)) }}
-        - name: MYSQL_ROOT_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: {{ template "mysql.secretName" . }}
-              key: mysql-root-password
-              {{- if .Values.mysqlAllowEmptyPassword }}
-              optional: true
-              {{- end }}
-        {{- end }}
-        {{- if not (and .Values.allowEmptyRootPassword (not .Values.mysqlPassword)) }}
-        - name: MYSQL_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: {{ template "mysql.secretName" . }}
-              key: mysql-password
-              {{- if or .Values.mysqlAllowEmptyPassword (empty .Values.mysqlUser) }}
-              optional: true
-              {{- end }}
-        {{- end }}
-        - name: MYSQL_USER
-          value: {{ .Values.mysqlUser | quote }}
-        - name: MYSQL_DATABASE
-          value: {{ default "" .Values.mysqlDatabase | quote }}
-        {{- if .Values.timezone }}
-        - name: TZ
-          value: {{ .Values.timezone }}
-        {{- end }}
-        {{- if .Values.extraEnvVars }}
-{{ tpl .Values.extraEnvVars . | indent 8 }}
-        {{- end }}
+#          - name: MYSQL_ROOT_PASSWORD
+#              valueFrom:
+#                secretKeyRef:
+#                  name: mysql-secrets
+#                  key: password
+          - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ template "mysql.secretName" . }}
+                  key: mysql-root-password
+#        {{- if .Values.mysqlAllowEmptyPassword }}
+#        - name: MYSQL_ALLOW_EMPTY_PASSWORD
+#          value: "true"
+#        {{- end }}
+#        {{- if not (and .Values.allowEmptyRootPassword (not .Values.mysqlRootPassword)) }}
+#        - name: MYSQL_ROOT_PASSWORD
+#          valueFrom:
+#            secretKeyRef:
+#              name: {{ template "mysql.secretName" . }}
+#              key: mysql-root-password
+#              {{- if .Values.mysqlAllowEmptyPassword }}
+#              optional: true
+#              {{- end }}
+#        {{- end }}
+#        {{- if not (and .Values.allowEmptyRootPassword (not .Values.mysqlPassword)) }}
+#        - name: MYSQL_PASSWORD
+#          valueFrom:
+#            secretKeyRef:
+#              name: {{ template "mysql.secretName" . }}
+#              key: mysql-password
+#              {{- if or .Values.mysqlAllowEmptyPassword (empty .Values.mysqlUser) }}
+#              optional: true
+#              {{- end }}
+#        {{- end }}
+#        - name: MYSQL_USER
+#          value: {{ default "" .Values.mysqlUser | quote }}
+#        - name: MYSQL_DATABASE
+#          value: {{ default "" .Values.mysqlDatabase | quote }}
+#        {{- if .Values.timezone }}
+#        - name: TZ
+#          value: {{ .Values.timezone }}
+#        {{- end }}
+#        {{- if .Values.extraEnvVars }}
+#{{ tpl .Values.extraEnvVars . | indent 8 }}
+#        {{- end }}
         ports:
         - name: mysql
           containerPort: 3306
+        livenessProbe:
+          exec:
+            command:
+            {{- if .Values.mysqlAllowEmptyPassword }}
+            - mysqladmin
+            - ping
+            {{- else }}
+            - sh
+            - -c
+            - "mysqladmin ping -u root -p${MYSQL_ROOT_PASSWORD}"
+            {{- end }}
+          initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+          successThreshold: {{ .Values.livenessProbe.successThreshold }}
+          failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
+        readinessProbe:
+          exec:
+            command:
+            {{- if .Values.mysqlAllowEmptyPassword }}
+            - mysqladmin
+            - ping
+            {{- else }}
+            - sh
+            - -c
+            - "mysqladmin ping -u root -p${MYSQL_ROOT_PASSWORD}"
+            {{- end }}
+          initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+          successThreshold: {{ .Values.readinessProbe.successThreshold }}
+          failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
         volumeMounts:
         - name: data
           mountPath: /var/lib/mysql
@@ -158,7 +203,6 @@ spec:
         image: "{{ .Values.metrics.image }}:{{ .Values.metrics.imageTag }}"
         imagePullPolicy: {{ .Values.metrics.imagePullPolicy | quote }}
         {{- if .Values.mysqlAllowEmptyPassword }}
-        }}
         command:
         - 'sh'
         - '-c'
